@@ -1,0 +1,131 @@
+.container {
+    width: 100%;
+    height: 100vh;
+    overflow: hidden;
+}
+
+.leftPane {
+    background-color: #1e1e1e;
+    overflow: hidden;
+}
+
+.rightPane {
+    background-color: #252526;
+    overflow: hidden;
+}
+
+.workspace {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.tabs {
+    display: flex;
+    background-color: #2d2d2d;
+    border-bottom: 1px solid #444;
+}
+
+.tab {
+    padding: 10px 20px;
+    background: none;
+    border: none;
+    color: #ccc;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.activeTab {
+    background-color: #1e1e1e;
+    color: white;
+    border-bottom: 2px solid #0078d4;
+}
+
+.contentArea {
+    flex: 1;
+    overflow: hidden;
+}
+
+.resizeHandle {
+    width: 4px;
+    background-color: #444;
+    transition: background-color 0.2s;
+}
+
+.resizeHandle:hover {
+    background-color: var(--primary-color);
+}
+
+.mainLayout {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    width: 100%;
+    overflow: hidden;
+}
+
+.tabContainer {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background-color: var(--background);
+}
+
+.tabs {
+    display: flex;
+    background-color: var(--background-dark);
+    border-bottom: 1px solid var(--border);
+}
+
+.tab {
+    padding: 0.75rem 1.5rem;
+    background: transparent;
+    border: none;
+    color: var(--text);
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: background-color 0.2s;
+}
+
+.tab:hover {
+    background-color: var(--background-hover);
+}
+
+.activeTab {
+    background-color: var(--background);
+    color: var(--primary);
+    border-bottom: 2px solid var(--primary);
+}
+
+.tabContent {
+    flex: 1;
+    height: calc(100% - 3rem);
+    /* Subtract tab height */
+    overflow: hidden;
+}
+
+.toolbar {
+    display: flex;
+    padding: 0.5rem;
+    background-color: var(--background-dark);
+    border-bottom: 1px solid var(--border);
+}
+
+.toolbarButton {
+    padding: 0.5rem 1rem;
+    background-color: var(--background-light);
+    color: var(--text);
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.toolbarButton:hover {
+    background-color: var(--background-hover);
+}
+
+.toolbarButton.active {
+    background-color: var(--primary);
+    color: white;
+}

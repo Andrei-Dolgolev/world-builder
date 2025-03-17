@@ -1,0 +1,216 @@
+.chatContainer {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+    background-color: var(--background);
+    overflow: hidden;
+}
+
+.messagesContainer {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.inputContainer {
+    display: flex;
+    align-items: center;
+    padding: 1rem;
+    background-color: var(--background-light);
+    border-top: 1px solid var(--border);
+}
+
+.input {
+    flex: 1;
+    padding: 0.75rem;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background-color: var(--background-dark);
+    color: var(--text);
+    font-size: 1rem;
+    resize: none;
+    min-height: 48px;
+    max-height: 120px;
+}
+
+.input:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+
+.sendButton {
+    margin-left: 0.5rem;
+    height: 48px;
+    min-width: 80px;
+    padding: 0 1rem;
+    background-color: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.sendButton:hover {
+    background-color: var(--primary-dark);
+}
+
+.sendButton:disabled {
+    background-color: var(--background-light);
+    color: var(--text-light);
+    cursor: not-allowed;
+}
+
+.message {
+    display: flex;
+    flex-direction: column;
+    padding: 1rem;
+    border-radius: 6px;
+    max-width: 100%;
+}
+
+.userMessage {
+    background-color: var(--background-light);
+    align-self: flex-end;
+}
+
+.aiMessage {
+    background-color: var(--background-hover);
+    align-self: flex-start;
+}
+
+.messageHeader {
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+}
+
+.userMessageHeader {
+    color: var(--primary-light);
+}
+
+.aiMessageHeader {
+    color: var(--text-light);
+}
+
+.messageContent {
+    white-space: pre-wrap;
+    overflow-wrap: break-word;
+}
+
+/* Ensure proper sizing for code blocks within messages */
+.messageContent pre {
+    max-width: 100%;
+    overflow-x: auto;
+    background-color: var(--background-dark);
+    padding: 0.75rem;
+    border-radius: 4px;
+    margin: 0.5rem 0;
+}
+
+.messageContent code {
+    font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+    font-size: 0.9em;
+}
+
+.markdownContent {
+    width: 100%;
+}
+
+.markdownContent h1,
+.markdownContent h2,
+.markdownContent h3,
+.markdownContent h4 {
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+}
+
+.markdownContent p {
+    margin-bottom: 0.75rem;
+    line-height: 1.5;
+}
+
+.markdownContent ul,
+.markdownContent ol {
+    margin-left: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+.markdownContent a {
+    color: #3b82f6;
+    text-decoration: underline;
+}
+
+.markdownContent pre {
+    background-color: #1e293b;
+    border-radius: 0.375rem;
+    padding: 1rem;
+    overflow-x: auto;
+    margin: 1rem 0;
+    font-family: monospace;
+    font-size: 0.9rem;
+    color: #e2e8f0;
+}
+
+.markdownContent code {
+    font-family: monospace;
+    background-color: rgba(0, 0, 0, 0.1);
+    padding: 0.1rem 0.3rem;
+    border-radius: 0.25rem;
+    font-size: 0.9em;
+}
+
+.markdownContent pre code {
+    background-color: transparent;
+    padding: 0;
+}
+
+.codeBlockContainer {
+    position: relative;
+}
+
+.applyCodeButton {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    background-color: #3b82f6;
+    color: white;
+    border: none;
+    border-radius: 0.25rem;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.8rem;
+    cursor: pointer;
+}
+
+.applyCodeButton:hover {
+    background-color: #2563eb;
+}
+
+.thinkingBlock {
+    margin-bottom: 1rem;
+    border-left: 3px solid var(--primary-light);
+    padding-left: 1rem;
+}
+
+.thinkingBlock summary {
+    cursor: pointer;
+    color: var(--primary);
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+}
+
+.thinking {
+    background-color: var(--background-light);
+    padding: 1rem;
+    border-radius: 0.5rem;
+    font-family: monospace;
+    white-space: pre-wrap;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    overflow-x: auto;
+}

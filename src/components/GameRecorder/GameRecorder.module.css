@@ -1,0 +1,317 @@
+.recorderContainer {
+    margin-top: 0.5rem;
+    display: flex;
+    justify-content: center;
+}
+
+.hiddenCanvas {
+    position: absolute;
+    left: -9999px;
+    visibility: hidden;
+}
+
+.recordButton {
+    background-color: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.recordButton:hover {
+    background-color: var(--primary-dark);
+}
+
+.recordingControls {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    background-color: var(--background-light);
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+}
+
+.recordingIndicator {
+    color: #ff3b30;
+    font-weight: 500;
+    animation: pulse 1.5s infinite;
+}
+
+.timer {
+    font-family: monospace;
+    font-weight: 500;
+}
+
+.stopButton {
+    background-color: #ff3b30;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+    cursor: pointer;
+}
+
+.stopButton:hover {
+    background-color: #e0352b;
+}
+
+@keyframes pulse {
+    0% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.5;
+    }
+
+    100% {
+        opacity: 1;
+    }
+}
+
+.recordingButtons {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.testButton {
+    background-color: var(--secondary);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+    cursor: pointer;
+}
+
+.testButton:hover {
+    background-color: var(--secondary-dark);
+}
+
+.modeSelect {
+    padding: 0.5rem;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background-color: var(--background-light);
+    color: var(--text);
+    font-size: 0.9rem;
+}
+
+.recordingMessage {
+    font-size: 0.85rem;
+    color: #ccc;
+    margin-right: 1rem;
+}
+
+.recordingInfo {
+    display: flex;
+    align-items: center;
+    margin-left: 0.5rem;
+    font-size: 0.8rem;
+    color: #888;
+    max-width: 300px;
+}
+
+.infoIcon {
+    margin-right: 0.25rem;
+}
+
+.infoText {
+    line-height: 1.2;
+}
+
+.infoPanel {
+    margin-top: 10px;
+    background-color: var(--background-light);
+    border-radius: 4px;
+    padding: 8px 12px;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    max-width: 400px;
+    width: 100%;
+}
+
+.infoHeader {
+    display: flex;
+    align-items: center;
+    margin-bottom: 6px;
+    font-weight: 500;
+}
+
+.infoIcon {
+    margin-right: 6px;
+}
+
+.infoTitle {
+    color: var(--text);
+}
+
+.infoList {
+    margin: 0;
+    padding-left: 20px;
+    line-height: 1.4;
+}
+
+.infoList li {
+    margin-bottom: 4px;
+}
+
+.experimentalButton {
+    position: relative;
+    padding-top: 18px;
+    /* Extra space for the tag */
+}
+
+.experimentalTag {
+    position: absolute;
+    top: 2px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.6rem;
+    background-color: #ff9800;
+    color: #000;
+    padding: 0 4px;
+    border-radius: 3px;
+    font-weight: bold;
+    line-height: 1.2;
+}
+
+/* New styling for the simplified UI */
+
+.gameAnalysisPanel {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    max-width: 400px;
+}
+
+.analysisButton {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background-color: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 10px 16px;
+    font-size: 1rem;
+    cursor: pointer;
+    width: 100%;
+    transition: background-color 0.2s;
+}
+
+.analysisButton:hover {
+    background-color: var(--primary-dark);
+}
+
+.analysisButton:disabled {
+    background-color: var(--primary-light);
+    cursor: not-allowed;
+}
+
+.analysisIcon {
+    font-size: 1.2rem;
+}
+
+.analysisText {
+    font-weight: 500;
+}
+
+/* Completely rewritten CSS to eliminate any potential conflicts */
+.gameAnalysisContainer {
+    margin-top: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 5px;
+}
+
+.gameAnalysisButton {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 8px 16px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.gameAnalysisButton:hover {
+    background-color: #3e8e41;
+}
+
+.gameAnalysisButton:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+}
+
+.buttonIcon {
+    font-size: 1.1rem;
+}
+
+.processingIndicator {
+    color: #666;
+    font-size: 0.8rem;
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        opacity: 0.6;
+    }
+
+    50% {
+        opacity: 1;
+    }
+
+    100% {
+        opacity: 0.6;
+    }
+}
+
+/* Minimal CSS to avoid any conflicts */
+.analysisButtonContainer {
+    margin-top: 10px;
+    display: flex;
+    justify-content: center;
+    padding: 5px;
+}
+
+.analysisButton {
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 8px 16px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: background-color 0.2s;
+}
+
+.analysisButton:hover {
+    background-color: #3e8e41;
+}
+
+.analysisButton:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+}

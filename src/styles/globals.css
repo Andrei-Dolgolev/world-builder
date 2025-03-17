@@ -1,0 +1,72 @@
+:root {
+    --background: #1e1e1e;
+    --background-light: #252526;
+    --background-dark: #141414;
+    --background-hover: #333333;
+    --background-darker: #0e0e0e;
+    --text: #e0e0e0;
+    --text-light: #a0a0a0;
+    --primary: #0078d4;
+    --primary-light: #2b88d8;
+    --primary-dark: #00599f;
+    --border: #444444;
+    --danger: #d83b01;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html,
+body {
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+    color: var(--text);
+    background-color: var(--background);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
+        Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+}
+
+#__next {
+    height: 100%;
+    width: 100%;
+}
+
+/* Fix for preview panel */
+iframe {
+    background-color: white;
+    width: 100%;
+    height: 100%;
+    border: none;
+}
+
+/* Scrollbar styles */
+::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--background-dark);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--primary);
+}
+
+a {
+    color: inherit;
+    text-decoration: none;
+}
+
+button {
+    cursor: pointer;
+}
