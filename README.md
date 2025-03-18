@@ -169,6 +169,67 @@ export ENVIRONMENT=dev
 - [Lambda@Edge Documentation](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/lambda-at-the-edge.html)
 - [S3 Website Hosting](https://docs.aws.amazon.com/AmazonS3/latest/userguide/WebsiteHosting.html)
 
+
+
+## Upload System with Presigned URLs
+
+The WorldBuilder platform now supports a more efficient upload system using presigned URLs, which provides several benefits:
+
+- **Improved Security**: No AWS credentials exposed to clients
+- **Better Performance**: Direct uploads from client to S3
+- **Reduced Lambda Overhead**: Lambda doesn't process file content
+- **Scalability**: Handle larger files and more concurrent uploads
+
+### How It Works
+
+1. **Request Upload URLs**:
+   - Client sends file metadata (path, content type) to Lambda
+   - Lambda verifies ownership and generates presigned URLs
+   - URLs are returned to client for direct uploads
+
+2. **Direct Upload to S3**:
+   - Client uploads files directly to S3 using presigned URLs
+   - No need to send files through Lambda or API Gateway
+
+3. **Cache Invalidation**:
+   - After uploads complete, client can request cache invalidation
+   - Lambda invalidates CloudFront cache for updated content
+
+### Using the Upload System
+
+To upload multiple files to a subdomain:
+
+```bash
+./deploy/prod/upload-files.sh <subdomain> <user-id> <file1> [file2] [file3] ...
+
+# Example:
+./deploy/prod/upload-files.sh my-world user123 index.html styles.css script.js
+```
+
+The script will:
+1. Request presigned URLs for each file
+2. Upload files directly to S3
+3. Invalidate CloudFront cache
+
+### API Endpoints
+
+The system provides two new API endpoints:
+
+1. **/generate-upload-urls** (POST):
+   - Request presigned URLs for uploading files
+   - Required parameters: subdomain, userId, files (array with path and contentType)
+
+2. **/invalidate-cache** (POST):
+   - Invalidate CloudFront cache after uploads
+   - Required parameters: subdomain, userId
+
+### Security Considerations
+
+- Presigned URLs expire after 1 hour
+- Ownership verification is required for all operations
+- File types and paths are validated before generating URLs 
+
+
 ---
 
 Created with ❤️ for WorldBuilder 

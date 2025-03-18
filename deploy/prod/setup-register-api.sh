@@ -272,283 +272,9 @@ create_lambda_function() {
   # Create Lambda function code directory
   mkdir -p /tmp/lambda_code
   
-  # Create the Lambda function code
-  cat > /tmp/lambda_code/register_subdomain.py << 'EOF'
-import json
-import boto3
-import os
-import re
-import time
-import uuid
-from botocore.exceptions import ClientError
+  # Read the register_subdomain.py file from the deploy/lambda directory
+  cp deploy/lambda/register_subdomain.py /tmp/lambda_code/register_subdomain.py
 
-# Environment variables
-BASE_DOMAIN = os.environ.get('BASE_DOMAIN', 'app.worldbuilder.space')
-DYNAMODB_TABLE = os.environ.get('DYNAMODB_TABLE', 'worldbuilder-subdomains')
-CLOUDFRONT_ID = os.environ.get('CLOUDFRONT_ID', '')
-AWS_REGION = os.environ.get('CUSTOM_REGION', 'us-west-2')
-
-# Initialize AWS clients
-s3_client = boto3.client('s3', region_name=AWS_REGION)
-s3_resource = boto3.resource('s3', region_name=AWS_REGION)
-dynamodb = boto3.resource('dynamodb', region_name=AWS_REGION)
-cloudfront_client = boto3.client('cloudfront', region_name='us-east-1')  # CloudFront is global, use us-east-1
-
-# Get DynamoDB table
-table = dynamodb.Table(DYNAMODB_TABLE)
-
-def lambda_handler(event, context):
-    try:
-        print(f"Processing request: {json.dumps(event)}")
-        
-        # Parse request body
-        body = json.loads(event['body']) if isinstance(event.get('body'), str) else event.get('body', {})
-        
-        # Extract request parameters
-        subdomain = body.get('subdomain', '').lower()
-        html_content = body.get('htmlContent', '')
-        path = body.get('path', 'index.html')
-        user_id = body.get('userId', '')
-        invalidate_cache = body.get('invalidateCache', True)
-        
-        print(f"Request parameters: subdomain={subdomain}, path={path}, user_id={user_id}, invalidate_cache={invalidate_cache}")
-        
-        # Validate input parameters
-        if not subdomain:
-            return api_response(400, {'error': 'Subdomain is required'})
-        
-        if not re.match(r'^[a-z0-9](?:[a-z0-9\-]{0,61}[a-z0-9])?$', subdomain):
-            return api_response(400, {'error': 'Invalid subdomain format'})
-            
-        if not html_content:
-            return api_response(400, {'error': 'HTML content is required'})
-            
-        if not user_id:
-            return api_response(400, {'error': 'User ID is required'})
-        
-        # Check if subdomain exists
-        try:
-            print(f"Checking if subdomain exists: {subdomain}")
-            # Check if subdomain already exists
-            response = table.get_item(Key={'subdomain': subdomain})
-            is_new_subdomain = 'Item' not in response
-            
-            print(f"Subdomain {subdomain} exists: {not is_new_subdomain}")
-            
-            # If subdomain exists, verify ownership
-            if not is_new_subdomain:
-                existing_user_id = response['Item'].get('userId')
-                if existing_user_id != user_id:
-                    print(f"Ownership verification failed: user_id={user_id}, existing_user_id={existing_user_id}")
-                    return api_response(403, {'error': 'You do not have permission to update this subdomain'})
-            
-            # If it's a new subdomain, check if user has reached limit
-            if is_new_subdomain:
-                print(f"New subdomain. Checking user quota for: {user_id}")
-                
-                # Query UserIdIndex for subdomains owned by this user
-                try:
-                    response = table.query(
-                        IndexName='UserIdIndex',
-                        KeyConditionExpression='userId = :userId',
-                        ExpressionAttributeValues={':userId': user_id}
-                    )
-                    
-                    user_subdomain_count = len(response.get('Items', []))
-                    print(f"User {user_id} has {user_subdomain_count} subdomains")
-                    
-                    # Check if user has reached limit (10 subdomains)
-                    if user_subdomain_count >= 10:
-                        return api_response(400, {'error': 'You have reached the maximum number of subdomains (10)'})
-                except Exception as e:
-                    print(f"Error checking user quota (non-fatal): {str(e)}")
-                    # Continue anyway - we'll create the subdomain
-                
-        except Exception as e:
-            print(f"Error checking subdomain existence: {str(e)}")
-            return api_response(500, {'error': 'Failed to check subdomain existence'})
-        
-        # Create bucket if it's a new subdomain
-        bucket_name = f"{subdomain}.{BASE_DOMAIN}"
-        if is_new_subdomain:
-            try:
-                # Create Bucket
-                print(f"Creating bucket {bucket_name}")
-                s3_client.create_bucket(
-                    Bucket=bucket_name,
-                    CreateBucketConfiguration={'LocationConstraint': AWS_REGION},
-                    ObjectOwnership='BucketOwnerEnforced'  # <-- Recommended explicit setting
-                )
-
-                # Configure website hosting
-                print("Configuring static website")
-                s3_client.put_bucket_website(
-                    Bucket=bucket_name,
-                    WebsiteConfiguration={
-                        'ErrorDocument': {'Key': 'error.html'},
-                        'IndexDocument': {'Suffix': 'index.html'}
-                    }
-                )
-
-                # Disable Block Public Access explicitly
-                print("Disabling Block Public Access...")
-                s3_client.put_public_access_block(
-                    Bucket=bucket_name,
-                    PublicAccessBlockConfiguration={
-                        'BlockPublicAcls': False,
-                        'IgnorePublicAcls': False,
-                        'BlockPublicPolicy': False,
-                        'RestrictPublicBuckets': False
-                    }
-                )
-
-                # Add Public Bucket Policy explicitly
-                print("Adding public bucket policy...")
-                bucket_policy = {
-                    'Version': '2012-10-17',
-                    'Statement': [{
-                        'Sid': 'PublicReadGetObject',
-                        'Effect': 'Allow',
-                        'Principal': '*',
-                        'Action': 's3:GetObject',
-                        'Resource': f'arn:aws:s3:::{bucket_name}/*'
-                    }]
-                }
-
-                s3_client.put_bucket_policy(
-                    Bucket=bucket_name,
-                    Policy=json.dumps(bucket_policy)
-                )
-
-                # Upload object WITHOUT ACL explicitly
-                print(f"Uploading content to {bucket_name}/{path}")
-                s3_client.put_object(
-                    Bucket=bucket_name,
-                    Key=path,
-                    Body=html_content,
-                    ContentType='text/html'
-                    # Removed ACL parameter
-                )
-                
-                # Create error page with public-read ACL
-                create_error_page(bucket_name)
-                
-                # Update DynamoDB entry
-                current_time = int(time.time())
-                table.put_item(
-                    Item={
-                        'subdomain': subdomain,
-                        'userId': user_id,
-                        'createdAt': current_time,
-                        'updatedAt': current_time
-                    }
-                )
-                
-                # Invalidate CloudFront cache if specified
-                if invalidate_cache and CLOUDFRONT_ID:
-                    invalidate_cloudfront_cache(subdomain)
-                
-                return api_response(200, {
-                    'success': True,
-                    'message': f'Subdomain {subdomain} created successfully',
-                    'url': f'https://{subdomain}.{BASE_DOMAIN}/{path}'
-                })
-                
-            except Exception as e:
-                print(f"Error creating new subdomain: {str(e)}")
-                return api_response(500, {'error': f'Failed to create/update S3 bucket: {str(e)}'})
-        
-        # Update content
-        try:
-            # Handle path - default to index.html if not provided or empty
-            if not path or path.endswith('/'):
-                path = f"{path}index.html".replace('//', '/')
-            
-            # Create or update the file with public-read ACL
-            s3_client.put_object(
-                Bucket=bucket_name,
-                Key=path,
-                Body=html_content,
-                ContentType='text/html',
-            )
-            
-            # Update the updatedAt timestamp in DynamoDB
-            table.update_item(
-                Key={'subdomain': subdomain},
-                UpdateExpression="SET updatedAt = :timestamp",
-                ExpressionAttributeValues={
-                    ':timestamp': int(time.time())
-                }
-            )
-            
-            # Invalidate CloudFront cache if requested
-            if invalidate_cache and CLOUDFRONT_ID:
-                invalidate_cloudfront_cache(subdomain)
-                
-            return api_response(200, {
-                'success': True,
-                'message': f"Content updated for {subdomain}",
-                'url': f"https://{subdomain}.{BASE_DOMAIN}/{path}"
-            })
-            
-        except Exception as e:
-            print(f"Error updating content: {str(e)}")
-            return api_response(500, {'error': f'Failed to update content: {str(e)}'})
-            
-    except Exception as e:
-        print(f"Unexpected error: {str(e)}")
-        return api_response(500, {'error': f'Unexpected error: {str(e)}'})
-
-def create_error_page(bucket_name):
-    """Create a default error page in the S3 bucket"""
-    error_html = """
-    <html>
-    <head><title>Error</title></head>
-    <body>
-        <h1>Error</h1>
-        <p>The requested page was not found.</p>
-    </body>
-    </html>
-    """
-    
-    s3_client.put_object(
-        Bucket=bucket_name,
-        Key='error.html',
-        Body=error_html,
-        ContentType='text/html',
-    )
-
-def invalidate_cloudfront_cache(subdomain):
-    """Invalidate CloudFront cache for a subdomain"""
-    try:
-        cloudfront_client.create_invalidation(
-            DistributionId=CLOUDFRONT_ID,
-            InvalidationBatch={
-                'Paths': {
-                    'Quantity': 1,
-                    'Items': [f'/{subdomain}/*']
-                },
-                'CallerReference': str(uuid.uuid4())
-            }
-        )
-    except Exception as e:
-        print(f"Error invalidating CloudFront cache: {str(e)}")
-        # Don't raise exception - this is a non-critical operation
-
-def api_response(status_code, body):
-    """Generate API Gateway response"""
-    return {
-        'statusCode': status_code,
-        'headers': {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,Authorization,X-Api-Key',
-            'Access-Control-Allow-Methods': 'OPTIONS,POST'
-        },
-        'body': json.dumps(body)
-    }
-EOF
-  
   # Create deployment package
   cd /tmp/lambda_code
   zip -r lambda_function.zip register_subdomain.py
@@ -769,6 +495,158 @@ test_api() {
   fi
 }
 
+
+
+# Add new endpoint for generating upload URLs
+create_upload_urls_endpoint() {
+  section "Creating Upload URLs Endpoint"
+  
+  API_ID=$(aws apigateway get-rest-apis --region $CUSTOM_REGION --query "items[?name=='$API_NAME'].id" --output text)
+  
+  if [ -z "$API_ID" ]; then
+    error "API Gateway not found. Run create_api_gateway first."
+  fi
+  
+  step "Creating /generate-upload-urls resource..."
+  
+  # Check if resource already exists
+  RESOURCES=$(aws apigateway get-resources --rest-api-id $API_ID --region $CUSTOM_REGION)
+  UPLOAD_RESOURCE_ID=$(echo $RESOURCES | jq -r '.items[] | select(.path=="/generate-upload-urls") | .id')
+  
+  if [ -z "$UPLOAD_RESOURCE_ID" ]; then
+    # Create resource
+    ROOT_RESOURCE_ID=$(echo $RESOURCES | jq -r '.items[] | select(.path=="/") | .id')
+    RESOURCE_RESPONSE=$(aws apigateway create-resource \
+      --rest-api-id $API_ID \
+      --parent-id $ROOT_RESOURCE_ID \
+      --path-part "generate-upload-urls" \
+      --region $CUSTOM_REGION)
+    
+    UPLOAD_RESOURCE_ID=$(echo $RESOURCE_RESPONSE | jq -r '.id')
+  fi
+  
+  step "Creating POST method for /generate-upload-urls..."
+  
+  # Create POST method
+  aws apigateway put-method \
+    --rest-api-id $API_ID \
+    --resource-id $UPLOAD_RESOURCE_ID \
+    --http-method POST \
+    --authorization-type NONE \
+    --region $CUSTOM_REGION || true
+  
+  # Create integration
+  LAMBDA_ARN=$(cat .register_lambda_arn)
+  
+  aws apigateway put-integration \
+    --rest-api-id $API_ID \
+    --resource-id $UPLOAD_RESOURCE_ID \
+    --http-method POST \
+    --type AWS_PROXY \
+    --integration-http-method POST \
+    --uri "arn:aws:apigateway:$CUSTOM_REGION:lambda:path/2015-03-31/functions/$LAMBDA_ARN/invocations" \
+    --region $CUSTOM_REGION || true
+  
+  # Create method response
+  aws apigateway put-method-response \
+    --rest-api-id $API_ID \
+    --resource-id $UPLOAD_RESOURCE_ID \
+    --http-method POST \
+    --status-code 200 \
+    --response-models '{"application/json": "Empty"}' \
+    --region $CUSTOM_REGION || true
+  
+  # Add permission for API Gateway to invoke Lambda
+  step "Setting Lambda permissions for API Gateway..."
+  
+  # Create a unique statement ID
+  STATEMENT_ID="apigateway-post-uploads-$(date +%s)"
+  
+  # Add permission (ignore error if already exists)
+  aws lambda add-permission \
+    --function-name $LAMBDA_NAME \
+    --statement-id $STATEMENT_ID \
+    --action lambda:InvokeFunction \
+    --principal apigateway.amazonaws.com \
+    --source-arn "arn:aws:execute-api:$CUSTOM_REGION:$(aws sts get-caller-identity --query 'Account' --output text):$API_ID/*/POST/generate-upload-urls" \
+    --region $CUSTOM_REGION 2>/dev/null || true
+  
+  success "Upload URLs endpoint created"
+  
+  # Create invalidation endpoint
+  step "Creating /invalidate-cache resource..."
+  
+  # Check if resource already exists
+  INVALIDATE_RESOURCE_ID=$(echo $RESOURCES | jq -r '.items[] | select(.path=="/invalidate-cache") | .id')
+  
+  if [ -z "$INVALIDATE_RESOURCE_ID" ]; then
+    # Create resource
+    INVALIDATE_RESPONSE=$(aws apigateway create-resource \
+      --rest-api-id $API_ID \
+      --parent-id $ROOT_RESOURCE_ID \
+      --path-part "invalidate-cache" \
+      --region $CUSTOM_REGION)
+    
+    INVALIDATE_RESOURCE_ID=$(echo $INVALIDATE_RESPONSE | jq -r '.id')
+  fi
+  
+  step "Creating POST method for /invalidate-cache..."
+  
+  # Create POST method
+  aws apigateway put-method \
+    --rest-api-id $API_ID \
+    --resource-id $INVALIDATE_RESOURCE_ID \
+    --http-method POST \
+    --authorization-type NONE \
+    --region $CUSTOM_REGION || true
+  
+  # Create integration
+  aws apigateway put-integration \
+    --rest-api-id $API_ID \
+    --resource-id $INVALIDATE_RESOURCE_ID \
+    --http-method POST \
+    --type AWS_PROXY \
+    --integration-http-method POST \
+    --uri "arn:aws:apigateway:$CUSTOM_REGION:lambda:path/2015-03-31/functions/$LAMBDA_ARN/invocations" \
+    --region $CUSTOM_REGION || true
+  
+  # Create method response
+  aws apigateway put-method-response \
+    --rest-api-id $API_ID \
+    --resource-id $INVALIDATE_RESOURCE_ID \
+    --http-method POST \
+    --status-code 200 \
+    --response-models '{"application/json": "Empty"}' \
+    --region $CUSTOM_REGION || true
+  
+  # Add permission for API Gateway to invoke Lambda
+  step "Setting Lambda permissions for API Gateway..."
+  
+  # Create a unique statement ID
+  STATEMENT_ID="apigateway-post-invalidate-$(date +%s)"
+  
+  # Add permission (ignore error if already exists)
+  aws lambda add-permission \
+    --function-name $LAMBDA_NAME \
+    --statement-id $STATEMENT_ID \
+    --action lambda:InvokeFunction \
+    --principal apigateway.amazonaws.com \
+    --source-arn "arn:aws:execute-api:$CUSTOM_REGION:$(aws sts get-caller-identity --query 'Account' --output text):$API_ID/*/POST/invalidate-cache" \
+    --region $CUSTOM_REGION 2>/dev/null || true
+  
+  success "Invalidation endpoint created"
+  
+  # Deploy API
+  step "Deploying API with new endpoints..."
+  
+  aws apigateway create-deployment \
+    --rest-api-id $API_ID \
+    --stage-name prod \
+    --region $CUSTOM_REGION
+  
+  success "API Gateway deployed with upload and invalidation endpoints"
+}
+
 # Main execution
 main() {
   # Check environment variables
@@ -785,6 +663,9 @@ main() {
   
   # Create API Gateway
   create_api_gateway
+  
+  # Create upload URLs endpoint
+  create_upload_urls_endpoint
   
   # Test the API
   test_api
