@@ -1,5 +1,24 @@
 .editorContainer {
     height: 100%;
     width: 100%;
-    overflow: hidden;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
+.editorControls {
+    display: flex;
+    justify-content: flex-end;
+    padding: 0.5rem;
+    background-color: var(--background-dark);
+    border-bottom: 1px solid var(--border);
+}
+
+.saveButton {
+    display: flex;
+    align-items: center;
+}
+
+.buttonIcon {
+    margin-right: 4px;
 }

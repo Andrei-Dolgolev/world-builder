@@ -1,5 +1,30 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { PHASER_SYSTEM_PROMPT } from '../../utils/prompts';
+import { PHASER_SYSTEM_PROMPT, GAME_DESIGN_DOCUMENT_PROMPT, COMBINED_GAME_DEV_PROMPT } from '../../utils/prompts';
+import { mergeJavaScriptBlocks } from '../../utils/codeExtraction';
+
+// Enhanced Phaser system prompt for better game mechanics
+const ENHANCED_PHASER_SYSTEM_PROMPT = `${PHASER_SYSTEM_PROMPT}
+
+GAME FUNCTIONALITY REQUIREMENTS:
+1. Character Movement:
+   - Always implement proper keyboard movement controls (LEFT, RIGHT for horizontal movement, UP or SPACEBAR for jump)
+   - Use Phaser's built-in keyboard handling (this.input.keyboard.createCursorKeys())
+   - Character movement should be responsive and smooth
+   - Apply appropriate acceleration and deceleration
+   - Avoid fixed velocity assignments that may cause jerky movement
+
+2. Game Restart:
+   - Always implement a restart mechanism that fully resets the game state
+   - When restarting, destroy all existing game objects before creating new ones
+   - Reset player position, score, and any game variables to initial values
+   - Ensure the physics bodies are properly re-created during restart
+   - Add a restart key (usually 'R') or use scene restart methods
+
+3. Game Structure:
+   - Organize code into clear preload(), create(), and update() methods
+   - Use separate functions for different functionality (movement, collisions, etc.)
+   - Initialize variables properly at the start of the scene
+   - Implement proper event listeners and cleanly remove them when needed`;
 
 export default async function handler(
   req: NextApiRequest,
@@ -10,10 +35,24 @@ export default async function handler(
   }
 
   try {
-    const { prompt, currentCode, conversation } = req.body;
+    const {
+      prompt,
+      currentCode,
+      conversation,
+      mode = 'code', // Possible values: 'code', 'gdd', 'hybrid'
+      gameIdea,
+      gameName,
+      genre,
+      targetAudience
+    } = req.body;
 
-    if (!prompt) {
-      return res.status(400).json({ message: 'Prompt is required' });
+    // Validate required inputs based on mode
+    if (mode === 'code' && !prompt) {
+      return res.status(400).json({ message: 'Prompt is required for code generation mode' });
+    }
+
+    if (mode === 'gdd' && !gameIdea) {
+      return res.status(400).json({ message: 'Game idea is required for GDD mode' });
     }
 
     // Define fallback mock responses
@@ -43,10 +82,13 @@ const game = new Phaser.Game(config);
 
 // Game variables
 let ball;
+let cursors;
+let restartKey;
 
 // Preload assets
 function preload() {
   // No assets to preload
+  this.load.image('ball', 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAYAAACNbyblAAAADElEQVQImWNgoBMAAABpAAFEI8ARAAAAAElFTkSuQmCC');
 }
 
 // Set up the game
@@ -63,13 +105,64 @@ function create() {
   
   // Set initial velocity
   ball.body.setVelocity(200, 200);
+  
+  // Setup keyboard controls
+  cursors = this.input.keyboard.createCursorKeys();
+  
+  // Setup restart key
+  restartKey = this.input.keyboard.addKey('R');
+  restartKey.on('down', function() {
+    this.scene.restart();
+  }, this);
 }
 
 // Game loop
 function update() {
-  // No additional update logic needed
+  // Control the ball with cursors
+  if (cursors.left.isDown) {
+    ball.body.setVelocityX(-150);
+  } else if (cursors.right.isDown) {
+    ball.body.setVelocityX(150);
+  }
+  
+  if (cursors.up.isDown) {
+    ball.body.setVelocityY(-150);
+  } else if (cursors.down.isDown) {
+    ball.body.setVelocityY(150);
+  }
 }
 `;
+
+    const mockGDD = `# ${gameName || 'New Game'} - Game Design Document
+    
+## 1. Game Overview
+- **Concept:** A mock game design document for testing
+- **Genre:** ${genre || 'Platformer'}
+- **Target Audience:** ${targetAudience || 'Casual gamers'}
+- **Platform:** Web browser via Phaser.js
+- **Game Flow:** The player advances through levels, collecting items and avoiding obstacles
+
+## 2. Gameplay
+- **Core Mechanics:** Platform jumping, item collection, enemy avoidance
+- **Player Controls:** Arrow keys for movement, spacebar for jump
+- **Objectives:** Collect all items and reach the end of each level
+- **Progression:** Increasing difficulty with more complex platforms and enemy patterns
+
+## 3. Technical Specifications
+- **Phaser Version:** Phaser 3.55 or newer
+- **Key Phaser Components:** Arcade physics, sprite animation, tilemaps
+- **Physics Requirements:** Arcade physics for platform collision and gravity
+- **Asset Requirements:** Character sprites, platforms, collectibles, background elements
+
+## 4. Implementation Roadmap
+- **Phase 1:** Core movement, platforms, and basic level design
+- **Phase 2:** Collectibles, scoring, and enemy implementation
+- **Phase 3:** Multiple levels, sound effects, and game polish
+
+## 5. Code Architecture
+- **Main Game Structure:** Single file with separate scenes for menus and gameplay
+- **Key Classes/Objects:** PlayScene, Player, Collectible, Enemy
+- **Scene Management:** Simple scene transition from menu to gameplay`;
 
     // Check if we should use mock responses
     const useMockResponse = !process.env.ANTHROPIC_API_KEY ||
@@ -79,63 +172,96 @@ function update() {
     // Conditionally use API or fallback to mock
     if (useMockResponse) {
       console.log("Using mock response (no API key configured)");
-      return res.status(200).json({
-        message: mockMessage,
-        code: mockCode,
-        thinking: "This is mock thinking content."
-      });
+
+      // Return different mock responses based on mode
+      if (mode === 'gdd') {
+        return res.status(200).json({
+          message: mockGDD,
+          gdd: mockGDD,
+          thinking: "This is mock thinking content for GDD generation."
+        });
+      } else {
+        return res.status(200).json({
+          message: mockMessage,
+          code: mockCode,
+          thinking: "This is mock thinking content."
+        });
+      }
     }
 
     try {
-      console.log("Using direct fetch to Anthropic API with extended thinking");
+      console.log(`Using direct fetch to Anthropic API with mode: ${mode}`);
 
-      // Create the enhanced system prompt with context
-      const enhancedSystemPrompt = `${PHASER_SYSTEM_PROMPT}
+      // Select the appropriate system prompt based on mode
+      let systemPrompt = '';
+      let userPrompt = '';
 
-CURRENT CODE:
-\`\`\`javascript
-${currentCode || '// No code provided'}
-\`\`\`
+      switch (mode) {
+        case 'gdd':
+          systemPrompt = GAME_DESIGN_DOCUMENT_PROMPT;
+          userPrompt = `I want to create a game called "${gameName || 'My Game'}" 
+          with genre "${genre || ''}" for "${targetAudience || 'general audience'}".
+          
+          Game idea: ${gameIdea}
+          
+          Please create a comprehensive Game Design Document (GDD) for this idea.`;
+          break;
 
-Remember to provide a complete version of the code that incorporates your changes.`;
+        case 'hybrid':
+          systemPrompt = COMBINED_GAME_DEV_PROMPT;
+          userPrompt = prompt || gameIdea;
 
-      // Format conversation for the API
+          // Add current code context if available
+          if (currentCode) {
+            systemPrompt += `\n\nCURRENT CODE:\n\`\`\`javascript\n${currentCode}\n\`\`\``;
+          }
+          break;
+
+        case 'code':
+        default:
+          // Use the enhanced prompt for better game mechanics
+          systemPrompt = `${ENHANCED_PHASER_SYSTEM_PROMPT}\n\nCURRENT CODE:\n\`\`\`javascript\n${currentCode || '// No code provided'}\`\`\`\n\nRemember to provide a complete version of the code that incorporates your changes and can run as a standalone script.`;
+          userPrompt = prompt;
+          break;
+      }
+
+      // Simplified conversation handling for API
       const apiMessages = [];
 
       // Add conversation history if available
       if (conversation && Array.isArray(conversation)) {
         // Convert our internal message format to Anthropic's format
         conversation.forEach(msg => {
-          if (msg.sender === 'user' || msg.sender === 'ai') {
-            apiMessages.push({
-              role: msg.sender === 'user' ? 'user' : 'assistant',
-              content: msg.sender === 'assistant' && msg.thinking
-                ? [
-                  { type: 'thinking', thinking: msg.thinking },
-                  { type: 'text', text: msg.text }
-                ]
-                : msg.text
-            });
+          // Check for valid roles and content
+          const role = (msg.sender === 'assistant' || msg.role === 'assistant') ? 'assistant' : 'user';
+          const content = typeof msg.text === 'string' ? msg.text :
+            (typeof msg.content === 'string' ? msg.content : '');
+
+          // Only add message if it has content
+          if (content.trim()) {
+            apiMessages.push({ role, content });
           }
         });
       }
 
       // Add the current prompt
-      apiMessages.push({ role: 'user', content: prompt });
+      apiMessages.push({ role: 'user', content: userPrompt });
 
-      // Prepare request payload with thinking enabled
+      console.log(`Sending conversation with ${apiMessages.length} messages`);
+
+      // Updated request structure using reasoning instead of thinking
       const requestBody = {
         model: 'claude-3-7-sonnet-20250219',
-        max_tokens: 4000,
-        system: enhancedSystemPrompt,
+        max_tokens: 40000,
+        system: systemPrompt,
         messages: apiMessages,
         thinking: {
           type: "enabled",
-          budget_tokens: 2000
+          budget_tokens: 20000
         }
       };
 
-      console.log("Sending direct API request to Anthropic with extended thinking");
+      console.log("Sending API request with reasoning enabled");
 
       // Make direct API call
       const apiResponse = await fetch('https://api.anthropic.com/v1/messages', {
@@ -157,67 +283,66 @@ Remember to provide a complete version of the code that incorporates your change
       console.log("API response received:",
         responseData.content ? "Content found" : "No content");
 
-      // Extract the thinking content if available
+      // Improved response extraction with better error handling
       let thinking = "";
       let responseText = "";
 
       if (responseData.content && Array.isArray(responseData.content)) {
         // Process the content blocks
         for (const block of responseData.content) {
-          if (block.type === 'thinking') {
-            thinking = block.thinking;
+          if (block.type === 'thinking' && block.thinking) {
+            // Handle thinking block
+            thinking = typeof block.thinking === 'string'
+              ? block.thinking
+              : JSON.stringify(block.thinking);
+          } else if (block.type === 'reasoning' && block.reasoning) {
+            // Handle reasoning block (newer API versions)
+            thinking = typeof block.reasoning === 'string'
+              ? block.reasoning
+              : JSON.stringify(block.reasoning);
           } else if (block.type === 'redacted_thinking') {
             thinking = "[Redacted thinking content]";
           } else if (block.type === 'text') {
-            responseText = block.text;
+            responseText = block.text || '';
           }
         }
+      } else if (responseData.text) {
+        // Fallback for simple text response
+        responseText = responseData.text;
       }
 
       if (!responseText) {
         throw new Error("Invalid response format from API");
       }
 
-      // Basic extraction of code blocks
-      const codeBlockRegex = /```(?:javascript|js)?\s*([\s\S]*?)```/;
-      const match = responseText.match(codeBlockRegex);
+      // Prepare the response based on the mode
+      if (mode === 'gdd') {
+        return res.status(200).json({
+          message: responseText,
+          gdd: responseText,
+          thinking: thinking || "AI reasoning process unavailable for this response."
+        });
+      } else {
+        // Extract code blocks for code or hybrid modes
+        let extractedCode = mergeJavaScriptBlocks(responseText);
 
-      console.log("Response text (first 500 chars):", responseText.substring(0, 500));
-
-      let extractedCode = match ? match[1].trim() : null;
-
-      // NEW: Never return null code - use existing code or fallback
-      if (!extractedCode || extractedCode === 'null') {
-        console.warn("No code found in AI response, using fallback");
-        // If we have current code, use that instead of returning null
-        extractedCode = currentCode || mockCode;
-      }
-
-      // Debug logging
-      console.log("Extracted code type:", typeof extractedCode);
-      console.log("Extracted code length:", extractedCode ? String(extractedCode).length : 0);
-
-      // After extracting the code from the AI response:
-      if (extractedCode) {
-        // Ensure code is a proper string, not an object
-        if (typeof extractedCode === 'object') {
-          try {
-            // Try to convert object to formatted JSON string
-            extractedCode = JSON.stringify(extractedCode, null, 2);
-            console.warn('Converting object code to JSON string');
-          } catch (err) {
-            console.error('Error stringifying code object:', err);
-            extractedCode = String(extractedCode); // Fallback to basic toString
-          }
+        // Ensure extractedCode is never null
+        if (!extractedCode) {
+          console.warn("No code found in AI response, using fallback");
+          extractedCode = currentCode || mockCode;
         }
-      }
 
-      // Also ensure the entire code response is processed as a string
-      return res.status(200).json({
-        message: responseText,
-        code: typeof extractedCode === 'string' ? extractedCode : String(extractedCode),
-        thinking: thinking
-      });
+        // Ensure code is properly formatted
+        const finalCode = typeof extractedCode === 'string'
+          ? extractedCode
+          : String(extractedCode);
+
+        return res.status(200).json({
+          message: responseText,
+          code: finalCode,
+          thinking: thinking || "AI reasoning process unavailable for this response."
+        });
+      }
     } catch (apiError: unknown) {
       // Type guard for apiError
       const error = apiError as Error;
@@ -228,12 +353,20 @@ Remember to provide a complete version of the code that incorporates your change
         stack: error.stack?.substring(0, 200) // First 200 chars of stack trace
       });
 
-      // Fallback response
-      return res.status(200).json({
-        message: `${mockMessage}\n\n(Note: This is a fallback response due to API issues. Error: ${error.message})`,
-        code: mockCode,
-        thinking: "Error occurred during thinking process."
-      });
+      // Fallback response based on mode
+      if (mode === 'gdd') {
+        return res.status(200).json({
+          message: `${mockGDD}\n\n(Note: This is a fallback response due to API issues. Error: ${error.message})`,
+          gdd: mockGDD,
+          thinking: "Error occurred during reasoning process."
+        });
+      } else {
+        return res.status(200).json({
+          message: `${mockMessage}\n\n(Note: This is a fallback response due to API issues. Error: ${error.message})`,
+          code: mockCode,
+          thinking: "Error occurred during reasoning process."
+        });
+      }
     }
   } catch (error) {
     console.error('Error in API route:', error);
@@ -243,34 +376,3 @@ Remember to provide a complete version of the code that incorporates your change
     });
   }
 }
-
-class MetricsRecorder {
-  constructor(game) {
-    this.game = game;
-    this.metrics = {
-      playtime: 0,
-      jumps: 0,
-      deaths: 0,
-      enemiesDefeated: 0,
-      scoreProgression: [],
-      inputFrequency: { left: 0, right: 0, up: 0, down: 0 }
-    };
-
-    this.setupListeners();
-    this.startTimer();
-  }
-
-  setupListeners() {
-    // Track player actions
-    this.game.input.keyboard.on('keydown', (event) => {
-      // Record key presses
-      if (event.key === 'ArrowUp') {
-        this.metrics.jumps++;
-        this.metrics.inputFrequency.up++;
-      }
-      // etc.
-    });
-  }
-
-  // Additional methods for tracking game-specific events
-} 

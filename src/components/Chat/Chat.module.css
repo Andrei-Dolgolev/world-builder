@@ -214,3 +214,115 @@
     color: var(--text-secondary);
     overflow-x: auto;
 }
+
+.modeToggleContainer {
+    display: flex;
+    margin: 0.5rem;
+    border-radius: 5px;
+    overflow: hidden;
+    border: 1px solid #3f3f5f;
+}
+
+.modeToggle {
+    flex: 1;
+    padding: 0.5rem 1rem;
+    background-color: transparent;
+    border: none;
+    color: #f0f0f0;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: background-color 0.2s;
+}
+
+.activeModeToggle {
+    background-color: #3f3f5f;
+    font-weight: 500;
+    color: white;
+}
+
+.modeToggle:hover:not(.activeModeToggle) {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.codeActions {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px;
+    background-color: #1a1a2e;
+    border-top: 1px solid #3f3f5f;
+}
+
+.applyCodeButton,
+.viewFullCodeButton {
+    padding: 6px 12px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: background-color 0.2s;
+}
+
+.applyCodeButton {
+    background-color: #4a69bd;
+    color: white;
+}
+
+.applyCodeButton:hover {
+    background-color: #5a79cd;
+}
+
+.viewFullCodeButton {
+    background-color: #3f3f5f;
+    color: white;
+}
+
+.viewFullCodeButton:hover {
+    background-color: #4f4f6f;
+}
+
+/* Modal for displaying full code */
+.codeModal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.codeModalContent {
+    background-color: #1a1a2e;
+    width: 80%;
+    height: 80%;
+    border-radius: 8px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+.closeModalButton {
+    align-self: flex-end;
+    background-color: #3f3f5f;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    margin: 10px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.fullCodePre {
+    flex: 1;
+    margin: 0;
+    padding: 16px;
+    background-color: #282c34;
+    overflow: auto;
+    color: #f8f8f2;
+    font-family: 'Fira Code', monospace;
+    font-size: 14px;
+}

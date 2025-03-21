@@ -1,22 +1,30 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import MainLayout from '../../components/Layout/MainLayout';
-import { getTemplateCode } from '../../components/Templates/phaserTemplates';
+import { templates } from '@/data/templates';
+import dynamic from 'next/dynamic';
+import { useCode } from '@/contexts/CodeContext';
+
+// Dynamically import MainLayout with SSR disabled
+const MainLayout = dynamic(
+    () => import('../../components/Layout/MainLayout'),
+    { ssr: false }
+);
 
 export default function NewProject() {
+    const [projectName, setProjectName] = useState('');
+    const { loadTemplate, code } = useCode();
     const router = useRouter();
-    const { template } = router.query;
-    const [code, setCode] = useState('');
 
     useEffect(() => {
-        if (template && typeof template === 'string') {
-            // Load template code
-            const templateCode = getTemplateCode(template);
-            setCode(templateCode);
+        // Get template from URL if provided
+        const templateParam = router.query.template as string;
+        if (templateParam && templates.find(t => t.id === templateParam) && !code) {
+            loadTemplate(templateParam);
+            console.log("Loading template from URL:", templateParam);
         }
-    }, [template]);
+    }, [router.query, loadTemplate, code]);
 
     return (
-        <MainLayout initialCode={code} />
+        <MainLayout />
     );
 } 

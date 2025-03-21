@@ -1,0 +1,138 @@
+.errorContainer {
+    position: fixed;
+    bottom: 1rem;
+    right: 1rem;
+    width: 350px;
+    max-height: 300px;
+    background-color: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    z-index: 1000;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.errorHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    background-color: #2a2a2a;
+    border-bottom: 1px solid #333;
+}
+
+.errorHeader h3 {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #f0f0f0;
+}
+
+.dismissAllButton {
+    background: none;
+    border: none;
+    color: #999;
+    font-size: 0.75rem;
+    cursor: pointer;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+}
+
+.dismissAllButton:hover {
+    color: #fff;
+    background-color: #444;
+}
+
+.errorList {
+    overflow-y: auto;
+    max-height: 250px;
+}
+
+.errorItem {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid #333;
+    background-color: #262626;
+}
+
+.errorItem:last-child {
+    border-bottom: none;
+}
+
+.errorContent {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    flex: 1;
+    overflow: hidden;
+    word-break: break-word;
+}
+
+.errorMessage {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    color: #f0f0f0;
+    font-size: 0.8125rem;
+}
+
+.errorDetails {
+    font-family: monospace;
+    font-size: 0.75rem;
+    color: #aaa;
+    background-color: #333;
+    padding: 0.5rem;
+    border-radius: 4px;
+    white-space: pre-wrap;
+    max-height: 100px;
+    overflow-y: auto;
+}
+
+.dismissButton {
+    background: none;
+    border: none;
+    color: #777;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    padding: 0.25rem;
+    margin-left: 0.5rem;
+    border-radius: 4px;
+}
+
+.dismissButton:hover {
+    color: #fff;
+    background-color: #444;
+}
+
+/* Error severity styles */
+.error {
+    border-left: 3px solid #e53935;
+}
+
+.warning {
+    border-left: 3px solid #ffb74d;
+}
+
+/* Error source styles */
+.editor {
+    background-color: #1e1e2d;
+}
+
+.preview {
+    background-color: #2d1e2d;
+}
+
+.deployment {
+    background-color: #1e2d1e;
+}
+
+.system {
+    background-color: #2d2d1e;
+}
