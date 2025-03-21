@@ -1,0 +1,205 @@
+# WorldBuilder .gitignore
+
+# AWS temporary files
+.api_url
+.register_lambda_role_arn
+.register_lambda_arn
+.cloudfront_id
+.cloudfront_domain
+.aws-sam/
+
+# Log files
+*.log
+logs/
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Cache directories
+.cache/
+tmp/
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Node.js (if you have frontend components)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
+
+# Python (for Lambda functions)
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+venv/
+ENV/
+
+# OS specific files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Editor directories and files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# AWS SAM
+samconfig.toml
+.aws-sam/
+
+# Lambda deployment packages
+*.zip
+
+# Terraform (if used)
+.terraform/
+*.tfstate
+*.tfstate.*
+terraform.tfvars
+
+# Test content
+test-content.html
+my-content.html
+new-content.html
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.js
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# local env files
+.env*.local
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# WorldBuilder Project-Specific Files
+.cloudfront_domain
+.cloudfront_id
+.cloudfront_id.cloudfront_id
+.cloudfront_oai_id
+.cursorrules
+.lambda_arn
+.lambda_edge_arn
+.lambda_edge_role_arn
+.lambda_role_arn
+.register_lambda_arn
+.register_lambda_role_arn
+.secret
+
+# Content files
+my-page.html
+new-content.html
+image_720.png
+image\ \(12\).png
+
+# Temporary directories
+/tmp
+
+# Environment variables
+.env.local
+.env*.local
+dev.env
+
+# Next.js
+/.next/
+/out/
+next-env.d.ts
+
+# Build outputs
+/build
+
+# Node.js 
+/node_modules
+/.pnp
+.pnp.js
+package-lock.json
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# Testing
+/coverage
+
+# Debug
+*.log
+logs/
+
+# Editor/OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Misc
+*.pem
+.vercel 
