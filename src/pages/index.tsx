@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import styles from '../styles/Home.module.css';
 import { basePhaserTemplate } from '../templates/basePhaser';
+import Head from 'next/head';
 
 // Define template options
 const templates = [
@@ -36,45 +37,50 @@ const templates = [
 export default function Home() {
     const router = useRouter();
 
+
+    console.log('WORLDBUILDER_API_URL', process.env.WORLDBUILDER_API_URL);
+
+    // Redirect to dashboard if needed
+    useEffect(() => {
+        // You could add authentication check here if needed
+        // router.push('/dashboard');
+    }, [router]);
+
     const selectTemplate = (templateId: string) => {
         router.push(`/projects/new?template=${templateId}`);
     };
 
     return (
-        <div className={styles.container}>
-            <main className={styles.main}>
-                <h1 className={styles.title}>Welcome to RoseClone</h1>
-                <p className={styles.description}>
-                    Select a template to get started
-                </p>
+        <>
+            <Head>
+                <title>WorldBuilder - Create Your Web Space</title>
+                <meta name="description" content="Create and manage your own web spaces with WorldBuilder" />
+                <link rel="icon" href="/favicon.ico" />
+            </Head>
 
-                <div className={styles.grid}>
-                    {templates.map((template) => (
-                        <div
-                            key={template.id}
-                            className={styles.card}
-                            onClick={() => selectTemplate(template.id)}
+            <div className={styles.container}>
+                <main className={styles.main}>
+                    <h1 className={styles.title}>Welcome to WorldBuilder</h1>
+                    <p className={styles.description}>
+                        Create your own web space in seconds.
+                    </p>
+
+                    <div className="mt-8 flex space-x-4">
+                        <a
+                            href="/api/auth/signin"
+                            className="bg-primary text-white py-3 px-6 rounded-lg hover:bg-primary-light transition-colors"
                         >
-                            <div className={styles.cardImage}>
-                                {/* Comment out the img tag until you have actual images */}
-                                {/* <img src={template.thumbnail} alt={template.name} /> */}
-                                <div style={{
-                                    width: '100%',
-                                    height: '100%',
-                                    display: 'flex',
-                                    justifyContent: 'center',
-                                    alignItems: 'center',
-                                    backgroundColor: template.id === 'phaser-blank' ? '#2a2a2a' : '#3a3a3a'
-                                }}>
-                                    {template.name}
-                                </div>
-                            </div>
-                            <h2>{template.name}</h2>
-                            <p>{template.description}</p>
-                        </div>
-                    ))}
-                </div>
-            </main>
-        </div>
+                            Sign In
+                        </a>
+                        <a
+                            href="/dashboard"
+                            className="bg-gray-200 text-gray-800 py-3 px-6 rounded-lg hover:bg-gray-300 transition-colors"
+                        >
+                            Dashboard
+                        </a>
+                    </div>
+                </main>
+            </div>
+        </>
     );
 } 

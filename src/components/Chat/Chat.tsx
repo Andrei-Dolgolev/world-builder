@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } f
 import ReactMarkdown from 'react-markdown';
 import rehypeHighlight from 'rehype-highlight';
 import styles from './Chat.module.css';
+import { extractTextFromReactChildren } from '@/utils/reactHelpers';
 
 interface Message {
     id: string;
@@ -17,6 +18,8 @@ interface ChatProps {
     clearErrors: () => void;
     isAnalyzing: boolean;
     preventFocusChange?: boolean;
+    onGDDGenerated?: (gdd: string, thinking?: string) => void;
+    supportGDD?: boolean; // Flag to enable GDD feature
 }
 
 // Define the forwarded ref type
@@ -24,7 +27,16 @@ export interface ChatRef {
     addMessages: (newMessages: Message[]) => void;
 }
 
-const Chat = forwardRef<ChatRef, ChatProps>(({ onCodeGenerated, currentCode, gameErrors, clearErrors, isAnalyzing, preventFocusChange = false }, ref) => {
+const Chat = forwardRef<ChatRef, ChatProps>(({
+    onCodeGenerated,
+    currentCode,
+    gameErrors,
+    clearErrors,
+    isAnalyzing,
+    preventFocusChange = false,
+    onGDDGenerated,
+    supportGDD = false
+}, ref) => {
     const [messages, setMessages] = useState<Message[]>([
         {
             id: '1',
@@ -32,6 +44,7 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ onCodeGenerated, currentCode, gam
             content: "Hello! I'm your AI assistant. Describe what you want to create or change in your game, and I'll help you build it!"
         }
     ]);
+    const [gddMode, setGDDMode] = useState(false);
     const [inputValue, setInputValue] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -136,6 +149,50 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ onCodeGenerated, currentCode, gam
         }
     };
 
+    // Helper functions to extract information from user input
+    const extractGameName = (input: string): string => {
+        // Simple extraction of game name (first quoted phrase or first few words)
+        const nameMatch = input.match(/"([^"]+)"/);
+        if (nameMatch) return nameMatch[1];
+
+        // Otherwise just use first few words
+        const words = input.split(' ').slice(0, 3).join(' ');
+        return words.charAt(0).toUpperCase() + words.slice(1);
+    };
+
+    const extractGenre = (input: string): string => {
+        // Look for common genre keywords
+        const genres = [
+            'platformer', 'puzzle', 'action', 'adventure', 'rpg',
+            'shooter', 'strategy', 'simulation', 'sports', 'racing'
+        ];
+
+        const lowerInput = input.toLowerCase();
+        for (const genre of genres) {
+            if (lowerInput.includes(genre)) {
+                return genre.charAt(0).toUpperCase() + genre.slice(1);
+            }
+        }
+
+        return '';
+    };
+
+    const extractTargetAudience = (input: string): string => {
+        // Look for audience keywords
+        if (input.toLowerCase().includes('kids') ||
+            input.toLowerCase().includes('children')) {
+            return 'Kids (7-12)';
+        }
+        if (input.toLowerCase().includes('teen')) {
+            return 'Teenagers (13-17)';
+        }
+        if (input.toLowerCase().includes('adult')) {
+            return 'Adults (25+)';
+        }
+
+        return 'Everyone';
+    };
+
     const handleSendMessage = async () => {
         if (!inputValue.trim()) return;
 
@@ -207,18 +264,33 @@ Would you like me to implement any of these improvements?`
         setIsLoading(true);
 
         try {
+            // Prepare request body based on current mode
+            const requestBody = {
+                prompt: inputValue,
+                currentCode,
+                conversation: messages.map(msg => ({
+                    sender: msg.role,
+                    text: msg.content,
+                    thinking: msg.thinking
+                })),
+                // Add mode parameter to determine type of generation
+                mode: gddMode ? 'gdd' : 'code',
+            };
+
+            // Add GDD-specific fields if in GDD mode
+            if (gddMode) {
+                Object.assign(requestBody, {
+                    gameIdea: inputValue,
+                    gameName: extractGameName(inputValue),
+                    genre: extractGenre(inputValue),
+                    targetAudience: extractTargetAudience(inputValue)
+                });
+            }
+
             const response = await fetch('/api/generate-code', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    prompt: inputValue,
-                    currentCode,
-                    conversation: messages.map(msg => ({
-                        sender: msg.role,
-                        text: msg.content,
-                        thinking: msg.thinking
-                    }))
-                })
+                body: JSON.stringify(requestBody)
             });
 
             const data = await response.json();
@@ -233,9 +305,20 @@ Would you like me to implement any of these improvements?`
 
             setMessages(prev => [...prev, newMessage]);
 
-            if (data.code) {
+            // Handle different types of responses
+            if (gddMode && data.gdd && onGDDGenerated) {
+                // If we're in GDD mode and have a GDD response, call the handler
+                onGDDGenerated(data.gdd, data.thinking);
+            } else if (data.code) {
+                // Otherwise, handle code generation as usual
                 onCodeGenerated(data.code);
+
+                // Mark code as modified after AI generates code
+                if (window && window.dispatchEvent) {
+                    window.dispatchEvent(new CustomEvent('codeModified', { detail: { source: 'ai' } }));
+                }
             }
+
         } catch (error) {
             console.error('Error sending message:', error);
 
@@ -281,17 +364,22 @@ Would you like me to implement any of these improvements?`
         }
     }));
 
-    // Add this helper function to ensure we're working with strings
-    const ensureCodeString = (codeInput: any): string => {
-        if (typeof codeInput === 'object') {
-            try {
-                return JSON.stringify(codeInput, null, 2);
-            } catch (e) {
-                console.error('Failed to stringify code object:', e);
-                return String(codeInput);
-            }
-        }
-        return String(codeInput); // Always return a string
+    /**
+     * Ensures the code is a valid string and properly formatted
+     */
+    const ensureCodeString = (input: any): string => {
+        // First extract plain text if this is React children
+        const extractedText = extractTextFromReactChildren(input);
+
+        // Ensure it's a string
+        const textString = typeof extractedText === 'string'
+            ? extractedText
+            : String(extractedText || '');
+
+        // Clean up common issues
+        return textString
+            .replace(/^\s+|\s+$/g, '') // Trim whitespace
+            .replace(/\\n/g, '\n');    // Replace literal \n with actual newlines
     };
 
     return (
@@ -300,12 +388,10 @@ Would you like me to implement any of these improvements?`
                 {messages.map(message => (
                     <div
                         key={message.id}
-                        className={`${styles.message} ${message.role === 'user' ? styles.userMessage : styles.aiMessage
-                            }`}
+                        className={`${styles.message} ${message.role === 'user' ? styles.userMessage : styles.aiMessage}`}
                     >
                         <div
-                            className={`${styles.messageHeader} ${message.role === 'user' ? styles.userMessageHeader : styles.aiMessageHeader
-                                }`}
+                            className={`${styles.messageHeader} ${message.role === 'user' ? styles.userMessageHeader : styles.aiMessageHeader}`}
                         >
                             {message.role === 'user' ? 'You' : 'AI Assistant'}
                         </div>
@@ -327,8 +413,14 @@ Would you like me to implement any of these improvements?`
                                         const match = /language-(\w+)/.exec(className || '');
                                         const lang = match && match[1] ? match[1] : '';
 
-                                        if (!inline && lang === 'js' || lang === 'javascript') {
-                                            const code = String(children).replace(/\n$/, '');
+                                        if (!inline && (lang === 'js' || lang === 'javascript')) {
+                                            // Use our helper to extract the actual code text
+                                            const codeText = extractTextFromReactChildren(children);
+
+                                            console.log('Code block extracted:', {
+                                                type: typeof codeText,
+                                                preview: codeText.substring(0, 50)
+                                            });
 
                                             return (
                                                 <div className={styles.codeBlockContainer}>
@@ -337,15 +429,46 @@ Would you like me to implement any of these improvements?`
                                                             {children}
                                                         </code>
                                                     </pre>
-                                                    <button
-                                                        className={styles.applyCodeButton}
-                                                        onClick={() => {
-                                                            const safeCode = ensureCodeString(code);
-                                                            onCodeGenerated(safeCode);
-                                                        }}
-                                                    >
-                                                        Apply Code
-                                                    </button>
+                                                    <div className={styles.codeActions}>
+                                                        <button
+                                                            className={styles.applyCodeButton}
+                                                            onClick={() => {
+                                                                const safeCode = ensureCodeString(children);
+                                                                console.log('Applying code (safe):', safeCode.substring(0, 100));
+                                                                onCodeGenerated(safeCode);
+                                                            }}
+                                                        >
+                                                            Apply Code
+                                                        </button>
+                                                        <button
+                                                            className={styles.viewFullCodeButton}
+                                                            onClick={() => {
+                                                                const safeCode = ensureCodeString(children);
+                                                                // Create a temporary modal or expand the code view
+                                                                const modal = document.createElement('div');
+                                                                modal.className = styles.codeModal;
+
+                                                                const modalContent = document.createElement('div');
+                                                                modalContent.className = styles.codeModalContent;
+
+                                                                const closeBtn = document.createElement('button');
+                                                                closeBtn.innerText = 'Close';
+                                                                closeBtn.className = styles.closeModalButton;
+                                                                closeBtn.onclick = () => document.body.removeChild(modal);
+
+                                                                const codeDisplay = document.createElement('pre');
+                                                                codeDisplay.innerHTML = `<code class="${styles.code}">${safeCode.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</code>`;
+                                                                codeDisplay.className = styles.fullCodePre;
+
+                                                                modalContent.appendChild(closeBtn);
+                                                                modalContent.appendChild(codeDisplay);
+                                                                modal.appendChild(modalContent);
+                                                                document.body.appendChild(modal);
+                                                            }}
+                                                        >
+                                                            View Full Code
+                                                        </button>
+                                                    </div>
                                                 </div>
                                             );
                                         }
@@ -391,6 +514,23 @@ Would you like me to implement any of these improvements?`
                 )}
                 <div ref={messagesEndRef} />
             </div>
+
+            {supportGDD && (
+                <div className={styles.modeToggleContainer}>
+                    <button
+                        className={`${styles.modeToggle} ${!gddMode ? styles.activeModeToggle : ''}`}
+                        onClick={() => setGDDMode(false)}
+                    >
+                        Code Generator
+                    </button>
+                    <button
+                        className={`${styles.modeToggle} ${gddMode ? styles.activeModeToggle : ''}`}
+                        onClick={() => setGDDMode(true)}
+                    >
+                        Game Designer
+                    </button>
+                </div>
+            )}
             <div className={styles.inputContainer}>
                 <textarea
                     className={styles.input}
@@ -400,7 +540,7 @@ Would you like me to implement any of these improvements?`
                         autoResizeTextarea(e);
                     }}
                     onKeyDown={handleKeyDown}
-                    placeholder="Describe what you want to create..."
+                    placeholder={gddMode ? "Describe your game idea..." : "Describe what you want to create..."}
                     rows={1}
                     onFocus={(e) => {
                         if (preventFocusChange) {
@@ -420,4 +560,7 @@ Would you like me to implement any of these improvements?`
     );
 });
 
-export default Chat; 
+// Display name for debugging
+Chat.displayName = 'Chat';
+
+export default Chat;

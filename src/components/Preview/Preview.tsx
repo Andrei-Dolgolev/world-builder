@@ -1,363 +1,253 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { RefreshCw, Video } from 'lucide-react';
+import { Button } from '@/components/ui';
 import styles from './Preview.module.css';
-import GameRecorder from '../GameRecorder/GameRecorder';
+import { useCode } from '@/contexts/CodeContext';
+import eventBus from '@/utils/eventBus';
+import { useEventListener } from '@/hooks/useEventListener';
 
 interface PreviewProps {
-  code: string;
-  onError: (error: any) => void;
+  onRestartGame?: () => void;
+  onError?: (error: any) => void;
   onGameplayAnalysisRequested?: (recording: Blob) => void;
 }
 
-const Preview: React.FC<PreviewProps> = ({ code, onError, onGameplayAnalysisRequested }) => {
-  const iframeRef = useRef<HTMLIFrameElement>(null);
-  const [error, setError] = useState<string | null>(null);
-  const hasReportedErrorRef = useRef<boolean>(false);
-  const [isRunning, setIsRunning] = useState<boolean>(true);
-  const [isIframeFocused, setIsIframeFocused] = useState<boolean>(false);
+const Preview: React.FC<PreviewProps> = ({ onRestartGame, onError, onGameplayAnalysisRequested }) => {
+  const { code, previewKey, refreshPreview, addError } = useCode();
+  const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadingStatus, setLoadingStatus] = useState('initializing');
+  const [currentCode, setCurrentCode] = useState('');
+  const [frameKey, setFrameKey] = useState(0);
 
-  // Add event handlers to manage focus state
-  const handleIframeFocus = () => {
-    setIsIframeFocused(true);
-  };
-
-  const handleIframeBlur = () => {
-    setIsIframeFocused(false);
-  };
-
-  // Add click handler to manage focus on container click
-  const handleContainerClick = (e: React.MouseEvent) => {
-    // Only handle clicks directly on the container (not on iframe or other elements)
-    if (e.target === e.currentTarget) {
-      setIsIframeFocused(false);
-
-      // Ensure the event doesn't propagate to prevent unwanted behaviors
-      e.stopPropagation();
-    }
-  };
-
-  // Reset and run the game again
-  const handleRestartGame = () => {
-    setError(null);
-    hasReportedErrorRef.current = false;
-    setIsRunning(true);
-
-    // Re-render the iframe with current code
-    if (iframeRef.current) {
-      const iframe = iframeRef.current;
-      iframe.src = "about:blank";
-      setTimeout(() => {
-        if (iframeRef.current) {
-          setupIframe(iframeRef.current, code);
+  // Generate HTML content for the preview
+  const generatePreviewHTML = useCallback((code: string) => {
+    // Safety check - if no code or empty code, use a minimal working example
+    const codeToExecute = code && code.trim() ? code : `
+      class EmptyScene extends Phaser.Scene {
+        constructor() {
+          super({ key: 'EmptyScene' });
         }
-      }, 100);
-    }
-  };
+        
+        create() {
+          this.add.text(400, 300, 'No game code provided.\\nEdit code in the Code tab.', {
+            fontSize: '24px',
+            color: '#ffffff',
+            align: 'center'
+          }).setOrigin(0.5);
+        }
+      }
+      
+      const game = new Phaser.Game({
+        type: Phaser.AUTO,
+        width: 800,
+        height: 600,
+        scene: [EmptyScene]
+      });`;
 
-  // Function to set up the iframe content
-  const setupIframe = (iframe: HTMLIFrameElement, gameCode: string) => {
-    try {
-      // Create HTML content with better game support
-      const htmlContent = `
-        <!DOCTYPE html>
-        <html>
+    return `
+      <!DOCTYPE html>
+      <html>
         <head>
           <meta charset="UTF-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <title>Game Preview</title>
           <script src="https://cdn.jsdelivr.net/npm/phaser@3.55.2/dist/phaser.min.js"></script>
           <style>
-            body { 
-              margin: 0; 
-              padding: 0; 
-              background: white; 
-              overflow: hidden; 
-              width: 100%; 
-              height: 100vh; 
-              display: flex; 
-              justify-content: center; 
-              align-items: center;
+            body {
+              margin: 0;
+              padding: 0;
+              background-color: #2a2a2a;
+              overflow: hidden;
             }
-            canvas { 
-              display: block; 
-              margin: 0 auto; 
-            }
-            #error-display {
-              position: fixed;
-              bottom: 0;
-              left: 0;
-              right: 0;
-              background: rgba(255, 0, 0, 0.8);
-              color: white;
-              padding: 10px;
-              font-family: monospace;
-              white-space: pre-wrap;
-              max-height: 30%;
-              overflow-y: auto;
-              z-index: 1000;
-            }
-            .execution-paused {
-              position: fixed;
-              top: 0;
-              left: 0;
-              right: 0;
-              background: rgba(0, 0, 0, 0.7);
-              color: white;
-              text-align: center;
-              padding: 10px;
-              font-family: sans-serif;
-              z-index: 1001;
-            }
-            #stats {
-              position: fixed;
-              top: 0;
-              right: 0;
-              background: rgba(0, 0, 0, 0.5);
-              color: white;
-              padding: 5px;
-              font-family: monospace;
-              font-size: 12px;
+            canvas {
+              display: block;
+              margin: 0 auto;
             }
           </style>
         </head>
         <body>
-          <div id="game-container"></div>
-          <div id="stats"></div>
           <script>
-            // Error handling system
-            let hasReportedError = false;
+            // Setup messaging to parent
+            window.addEventListener('load', function() {
+              window.parent.postMessage({ type: 'dom-ready' }, '*');
+            });
             
+            // Error handling
             window.onerror = function(message, source, lineno, colno, error) {
-              if (hasReportedError) return true; // Only report the first error
-              
-              hasReportedError = true;
-              
-              // Report errors to parent window
-              if (window.parent && window.parent.postMessage) {
-                window.parent.postMessage({
-                  type: 'error',
-                  message: message,
-                  source: source,
-                  lineno: lineno,
-                  colno: colno,
-                  stack: error ? error.stack : 'No stack trace available'
-                }, '*');
-              }
-              
-              // Display error in the iframe
-              const errorDisplay = document.createElement('div');
-              errorDisplay.id = 'error-display';
-              errorDisplay.textContent = message + (error ? '\\n\\n' + error.stack : '');
-              document.body.appendChild(errorDisplay);
-              
-              // Add a notice that execution has been paused
-              const pauseNotice = document.createElement('div');
-              pauseNotice.className = 'execution-paused';
-              pauseNotice.textContent = 'Game execution paused due to error. See error below.';
-              document.body.appendChild(pauseNotice);
-              
-              // Try to gracefully stop the game
-              if (window.game) {
-                try {
-                  window.game.destroy(true);
-                } catch (e) {
-                  console.error('Failed to destroy game instance:', e);
-                }
-              }
-              
+              window.parent.postMessage({ 
+                type: 'game-error', 
+                error: { message, source, lineno, colno, stack: error?.stack } 
+              }, '*');
               return true; // Prevent default error handling
             };
-
-            // Setup performance monitoring for complex games
-            let frameCount = 0;
-            let lastTime = performance.now();
-            let fps = 0;
             
-            function updateStats() {
-              frameCount++;
-              const now = performance.now();
-              
-              if (now - lastTime >= 1000) {
-                fps = Math.round((frameCount * 1000) / (now - lastTime));
-                frameCount = 0;
-                lastTime = now;
-                
-                const statsEl = document.getElementById('stats');
-                if (statsEl) {
-                  // Get memory usage if available
-                  let memoryInfo = '';
-                  if (performance && performance.memory) {
-                    const usedHeap = Math.round(performance.memory.usedJSHeapSize / (1024 * 1024));
-                    const totalHeap = Math.round(performance.memory.totalJSHeapSize / (1024 * 1024));
-                    memoryInfo = \` | Memory: \${usedHeap}MB/\${totalHeap}MB\`;
-                  }
-                  
-                  statsEl.textContent = \`FPS: \${fps}\${memoryInfo}\`;
-                }
-              }
-              
-              if (!hasReportedError) {
-                requestAnimationFrame(updateStats);
-              }
-            }
-            
-            requestAnimationFrame(updateStats);
-            
-            // Allow parent window communication
-            window.addEventListener('message', function(event) {
-              if (event.data && event.data.type === 'restart') {
-                location.reload();
-              }
-            });
-
-            // Run the game code
+            // Execute the game code
             try {
-              ${gameCode}
+              window.parent.postMessage({ type: 'executing-code' }, '*');
+              ${codeToExecute}
+              window.parent.postMessage({ type: 'code-executed' }, '*');
+              
+              // Signal when Phaser is ready
+              if (typeof game !== 'undefined') {
+                game.events.once('ready', function() {
+                  window.parent.postMessage({ type: 'game-loaded' }, '*');
+                });
+              } else {
+                // Fallback if game variable is not exposed
+                setTimeout(function() {
+                  window.parent.postMessage({ type: 'game-loaded' }, '*');
+                }, 1000);
+              }
             } catch (error) {
+              console.error('Error in game code:', error);
               window.onerror(error.message, null, null, null, error);
             }
           </script>
         </body>
-        </html>
-      `;
+      </html>
+    `;
+  }, []);
 
-      const blob = new Blob([htmlContent], { type: 'text/html' });
-      const blobUrl = URL.createObjectURL(blob);
+  // Listen for force-refresh events
+  useEventListener('preview:refresh', () => {
+    setFrameKey(prev => prev + 1);
+    setIsLoading(true);
+    setLoadingStatus('Reloading preview...');
+  });
 
-      // Set the iframe src to the blob URL
-      iframe.src = blobUrl;
-      return blobUrl;
-    } catch (err: any) {
-      console.error('Error setting up preview:', err);
-      setError(`Error setting up preview: ${err.message}`);
-
-      if (!hasReportedErrorRef.current) {
-        hasReportedErrorRef.current = true;
-        onError({
-          message: `Error setting up preview: ${err.message}`,
-          stack: err.stack
-        });
-      }
-      return null;
-    }
-  };
-
-  // Initial setup when code changes
+  // Make sure we have the latest code when rendering
   useEffect(() => {
+    // Ensure code is a string
+    const safeCode = typeof code === 'string' ? code : String(code || '');
+    setCurrentCode(safeCode);
+
+    // Signal loading state
+    setIsLoading(true);
+    setLoadingStatus('Reloading preview...');
+    eventBus.emit('preview:loading');
+
+    // Force iframe refresh
+    setFrameKey(prevKey => prevKey + 1);
+  }, [code, previewKey]);
+
+  // Add this effect to update the iframe content when frameKey changes
+  useEffect(() => {
+    // Skip if we don't have a ref or code yet
     if (!iframeRef.current) return;
 
-    // Reset state
-    setError(null);
-    hasReportedErrorRef.current = false;
-    setIsRunning(true);
-
-    // Safety check - ensure code is a string
-    const safeCode = typeof code === 'string' ? code :
-      typeof code === 'object' ? JSON.stringify(code, null, 2) :
-        String(code);
-
-    const iframe = iframeRef.current;
-    const blobUrl = setupIframe(iframe, safeCode);
-
-    // Clean up blob URL when component unmounts or code changes
-    return () => {
-      if (blobUrl) URL.revokeObjectURL(blobUrl);
-    };
-  }, [code]);
+    // Generate and set HTML content
+    const html = generatePreviewHTML(currentCode);
+    iframeRef.current.srcdoc = html;
+  }, [frameKey, currentCode, generatePreviewHTML]);
 
   // Listen for messages from the iframe
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
-      if (event.data && event.data.type === 'error' && !hasReportedErrorRef.current) {
-        hasReportedErrorRef.current = true;
-        setIsRunning(false);
+      if (!event.data || !event.data.type) return;
 
-        const errorDetails = {
-          message: event.data.message,
-          source: event.data.source,
-          lineno: event.data.lineno,
-          colno: event.data.colno,
-          stack: event.data.stack || ''
-        };
+      console.log('Preview received message:', event.data.type);
 
-        const errorMessage = `${errorDetails.message}\n\nLine: ${errorDetails.lineno}, Column: ${errorDetails.colno}\n\n${errorDetails.stack}`;
-
-        setError(errorMessage);
-        onError(errorDetails);
+      switch (event.data.type) {
+        case 'dom-ready':
+          setLoadingStatus('DOM ready');
+          break;
+        case 'executing-code':
+          setLoadingStatus('Executing game code');
+          break;
+        case 'code-executed':
+          setLoadingStatus('Game initialized');
+          break;
+        case 'game-loaded':
+          setIsLoading(false);
+          setLoadingStatus('Game running');
+          eventBus.emit('preview:ready');
+          break;
+        case 'game-error':
+          setLoadingStatus(`Error: ${event.data.error.message}`);
+          if (onError) onError(event.data.error);
+          // Add to error handling system
+          addError({
+            message: event.data.error.message,
+            source: 'preview',
+            severity: 'error'
+          });
+          eventBus.emit('error:occurred', event.data.error);
+          break;
       }
     };
 
     window.addEventListener('message', handleMessage);
-    return () => {
-      window.removeEventListener('message', handleMessage);
-    };
-  }, [onError]);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [onError, addError]);
 
-  const handleRecordingComplete = (recording: Blob) => {
-    if (onGameplayAnalysisRequested) {
-      onGameplayAnalysisRequested(recording);
+  const handleRefresh = () => {
+    if (onRestartGame) {
+      onRestartGame();
+    } else {
+      refreshPreview();
+      eventBus.emit('preview:refresh');
+    }
+  };
+
+  const handleRecordToggle = () => {
+    if (isRecording) {
+      setIsRecording(false);
+      // Stop recording
+    } else {
+      setIsRecording(true);
+      // Start recording
+      // This is a placeholder for actual recording implementation
+      setTimeout(() => {
+        // Simulate finished recording after 3 seconds
+        if (onGameplayAnalysisRequested) {
+          // Create a mock Blob for this example
+          const mockBlob = new Blob(["video data"], { type: 'video/webm' });
+          onGameplayAnalysisRequested(mockBlob);
+        }
+        setIsRecording(false);
+      }, 3000);
     }
   };
 
   return (
-    <div className={styles.preview}>
+    <div className={styles.previewContainer}>
       <div className={styles.previewHeader}>
         <h3>Game Preview</h3>
         <div className={styles.previewControls}>
-          <button
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
             className={styles.restartButton}
-            onClick={handleRestartGame}
-            title="Restart Game"
           >
-            ↻ Restart
-          </button>
+            <RefreshCw size={16} className={styles.buttonIcon} />
+            Restart
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRecordToggle}
+            className={`${styles.recordButton} ${isRecording ? styles.recording : ''}`}
+          >
+            <Video size={16} className={styles.buttonIcon} />
+            {isRecording ? 'Recording...' : 'Record'}
+          </Button>
         </div>
       </div>
-      <div
-        className={`${styles.iframeContainer} ${isIframeFocused ? styles.focused : ''}`}
-        onClick={handleContainerClick}
-      >
-        <iframe
-          ref={iframeRef}
-          className={styles.iframe}
-          title="Game Preview"
-          sandbox="allow-scripts allow-same-origin"
-          onFocus={handleIframeFocus}
-          onBlur={handleIframeBlur}
-        />
-        {error && (
-          <div className={styles.error}>
-            <div className={styles.errorHeader}>
-              Game Error Detected
-              <div>
-                <button
-                  className={styles.errorFixButton}
-                  onClick={() => {
-                    hasReportedErrorRef.current = false;
-                    onError({
-                      message: "Error reported by user action",
-                      details: error
-                    });
-                  }}
-                >
-                  Fix Error
-                </button>
-                <button
-                  className={styles.restartButton}
-                  onClick={handleRestartGame}
-                >
-                  Restart
-                </button>
-              </div>
-            </div>
-            <pre>{error}</pre>
-          </div>
-        )}
-      </div>
-
-      <GameRecorder
-        targetRef={iframeRef}
-        onRecordingComplete={handleRecordingComplete}
-        gameCode={code}
+      {isLoading && (
+        <div className={styles.previewLoading}>
+          <div className={styles.spinner}></div>
+          <p>Loading game preview... <span className={styles.loadingStatus}>{loadingStatus}</span></p>
+        </div>
+      )}
+      <iframe
+        ref={iframeRef}
+        key={frameKey}
+        className={styles.previewFrame}
+        title="Game Preview"
+        sandbox="allow-scripts"
       />
     </div>
   );

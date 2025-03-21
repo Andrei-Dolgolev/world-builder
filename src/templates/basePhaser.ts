@@ -1,3 +1,6 @@
+// basePhaser.ts
+// This file should only export template strings, not actually use Phaser
+
 export const basePhaserTemplate = `// Basic Phaser Game Template with proper update loop
 const gameConfig = {
   type: Phaser.AUTO,
@@ -116,5 +119,54 @@ function update() {
     // Error handling to prevent game crashes
     console.error("Error in update loop:", error);
   }
+}`;
+
+// Secondary template for class-based scene structure
+export const classBasedPhaserTemplate = `// Class-based Phaser Game with Scene classes
+
+class MainScene extends Phaser.Scene {
+  constructor() {
+    super('MainScene');
+  }
+
+  preload() {
+    // Load assets here
+    this.load.image('sky', 'https://labs.phaser.io/assets/skies/space3.png');
+    this.load.image('ground', 'https://labs.phaser.io/assets/sprites/platform.png');
+    this.load.spritesheet('dude', 'https://labs.phaser.io/assets/sprites/dude.png', { 
+      frameWidth: 32, 
+      frameHeight: 48 
+    });
+  }
+
+  create() {
+    // Create game elements here
+    this.add.image(400, 300, 'sky');
+    
+    // Add text
+    this.add.text(400, 300, 'Hello World', {
+      fontSize: '32px',
+      color: '#ffffff'
+    }).setOrigin(0.5);
+  }
+
+  update() {
+    // Game loop code here
+  }
 }
-`; 
+
+const config = {
+  type: Phaser.AUTO,
+  width: 800,
+  height: 600,
+  physics: {
+    default: 'arcade',
+    arcade: {
+      gravity: { y: 300 },
+      debug: false
+    }
+  },
+  scene: [MainScene]
+};
+
+const game = new Phaser.Game(config);`; 

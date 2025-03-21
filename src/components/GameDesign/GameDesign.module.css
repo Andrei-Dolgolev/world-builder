@@ -1,0 +1,376 @@
+/* GameDesign.module.css */
+
+.gddContainer {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+    background-color: #1a1a2e;
+    color: #f0f0f0;
+    border-radius: 8px;
+}
+
+.tabContainer {
+    display: flex;
+    border-bottom: 1px solid #3f3f5f;
+    background-color: #232339;
+}
+
+.tab {
+    padding: 12px 20px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    color: #f0f0f0;
+    transition: all 0.2s ease;
+}
+
+.tab:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.activeTab {
+    color: #ffffff;
+    border-bottom: 2px solid #4a69bd;
+    font-weight: 600;
+    background-color: #3f3f5f;
+}
+
+.tabContent {
+    flex: 1;
+    overflow: auto;
+    padding: 0;
+}
+
+.gddContent {
+    padding: 1.5rem;
+    height: 100%;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.gddActions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    padding: 0.75rem;
+    background-color: #232339;
+    border-radius: 5px;
+}
+
+.gddTitle {
+    font-size: 28px;
+    margin-bottom: 24px;
+    border-bottom: 1px solid #3f3f5f;
+    padding-bottom: 10px;
+    color: #f0f0f0;
+}
+
+.gddSection {
+    font-size: 22px;
+    margin: 20px 0 12px 0;
+    padding: 8px 12px;
+    background-color: rgba(255, 255, 255, 0.05);
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: #f0f0f0;
+}
+
+.expandIcon {
+    font-size: 14px;
+    color: #a0a0a0;
+}
+
+.codeContent {
+    padding: 20px;
+    background-color: #1a1a2e;
+    color: #f0f0f0;
+}
+
+.codeBlock {
+    margin-bottom: 1.5rem;
+    border-radius: 5px;
+    overflow: hidden;
+    background-color: #282c34;
+    border: 1px solid #3f3f5f;
+}
+
+.codeBlock h4 {
+    margin: 0;
+    padding: 10px 15px;
+    background-color: #3f3f5f;
+    border-bottom: 1px solid #3f3f5f;
+    color: #f0f0f0;
+}
+
+.pre {
+    margin: 0;
+    padding: 1rem;
+    background-color: #282c34;
+    overflow-x: auto;
+    max-height: 400px;
+}
+
+.code {
+    font-family: 'Fira Code', monospace;
+    font-size: 14px;
+    color: #f8f8f2;
+}
+
+.applyButton,
+.applyAllButton {
+    display: block;
+    margin: 0.5rem;
+    padding: 0.5rem 1rem;
+    background-color: #4a69bd;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: background-color 0.2s;
+}
+
+.applyButton:hover,
+.applyAllButton:hover {
+    background-color: #5a79cd;
+}
+
+.inlineCode {
+    padding: 2px 6px;
+    font-family: 'Fira Code', monospace;
+    background-color: #2a2a3a;
+    border-radius: 4px;
+    font-size: 90%;
+    color: #e83e8c;
+}
+
+.thinkingContent {
+    padding: 20px;
+    background-color: #1a1a2e;
+}
+
+.thinking {
+    background-color: #232339;
+    padding: 16px;
+    border-radius: 6px;
+    font-family: 'Fira Code', monospace;
+    font-size: 14px;
+    white-space: pre-wrap;
+    overflow-x: auto;
+    border: 1px solid #3f3f5f;
+    height: calc(100vh - 200px);
+    overflow-y: auto;
+    color: #f0f0f0;
+}
+
+/* Empty state styles */
+.noGddMessage {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    text-align: center;
+    padding: 2rem;
+    background-color: #1a1a2e;
+    color: #f0f0f0;
+    border-radius: 8px;
+}
+
+.noGddMessage h2 {
+    margin-bottom: 1rem;
+    font-size: 1.5rem;
+    font-weight: 500;
+}
+
+.noGddMessage p {
+    max-width: 600px;
+    line-height: 1.6;
+    opacity: 0.8;
+}
+
+/* Mode toggle styling to match the design */
+.modeToggleContainer {
+    display: flex;
+    margin: 0.5rem;
+    border-radius: 5px;
+    overflow: hidden;
+    border: 1px solid #3f3f5f;
+}
+
+.modeToggle {
+    flex: 1;
+    padding: 0.5rem 1rem;
+    background-color: transparent;
+    border: none;
+    color: #f0f0f0;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: background-color 0.2s;
+}
+
+.activeModeToggle {
+    background-color: #3f3f5f;
+    font-weight: 500;
+    color: white;
+}
+
+.modeToggle:hover:not(.activeModeToggle) {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* Style for markdown content */
+.gddContent h1 {
+    font-size: 2rem;
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #3f3f5f;
+    color: #f0f0f0;
+}
+
+.gddContent h2 {
+    font-size: 1.5rem;
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+    padding: 0.5rem;
+    background-color: rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+    color: #f0f0f0;
+}
+
+.gddContent p {
+    line-height: 1.6;
+    margin-bottom: 1rem;
+    color: #f0f0f0;
+}
+
+.gddContent ul,
+.gddContent ol {
+    margin-bottom: 1rem;
+    padding-left: 1.5rem;
+    color: #f0f0f0;
+}
+
+.gddContent li {
+    margin-bottom: 0.5rem;
+    color: #f0f0f0;
+}
+
+
+.codeIntegrationOptions {
+    background-color: #232339;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+    border-radius: 6px;
+}
+
+.mergeStrategySelector {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.mergeStrategySelector label {
+    color: #f0f0f0;
+    font-weight: 500;
+}
+
+.mergeSelect {
+    background-color: #3f3f5f;
+    color: #f0f0f0;
+    border: 1px solid #4a69bd;
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.mergeSelect:focus {
+    outline: none;
+    border-color: #5a79cd;
+}
+
+.codeBlock {
+    margin-bottom: 1.5rem;
+    border-radius: 5px;
+    overflow: hidden;
+    background-color: #282c34;
+    border: 1px solid #3f3f5f;
+    transition: border-color 0.2s;
+    cursor: pointer;
+}
+
+.selectedCodeBlock {
+    border-color: #4a69bd;
+    box-shadow: 0 0 0 1px #4a69bd;
+}
+
+.codeBlockActions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 16px;
+    background-color: #232339;
+}
+
+.codeMeta {
+    display: flex;
+    gap: 12px;
+    color: #a0a0a0;
+    font-size: 12px;
+}
+
+.codeLanguage {
+    background-color: #3f3f5f;
+    padding: 3px 6px;
+    border-radius: 4px;
+}
+
+.codeLines {
+    color: #a0a0a0;
+}
+
+.applyAllContainer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-top: 2rem;
+    padding: 1rem;
+    background-color: #232339;
+    border-radius: 6px;
+}
+
+.applyAllNote {
+    margin-top: 8px;
+    color: #a0a0a0;
+    font-size: 14px;
+}
+
+/* Make buttons consistent */
+.applyButton,
+.applyAllButton {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0;
+    padding: 0.5rem 1rem;
+    background-color: #4a69bd;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: background-color 0.2s;
+    min-width: 100px;
+}
+
+.applyButton:hover,
+.applyAllButton:hover {
+    background-color: #5a79cd;
+}
